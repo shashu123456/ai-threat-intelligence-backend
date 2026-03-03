@@ -1,38 +1,44 @@
-import sqlite3
-from datetime import datetime
+from database import get_connection
 
-def connect_db():
-    return sqlite3.connect("database.db")
-
-def save_scan_history(user, url, prediction, confidence, risk_score, ip):
-    conn = connect_db()
+def create_tables():
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO scans (user, url, prediction, confidence, risk_score, ip, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (user, url, prediction, confidence, risk_score, ip, datetime.utcnow()))
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        password BYTEA,
+        role VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS scans (
+        id SERIAL PRIMARY KEY,
+        user_email VARCHAR(255),
+        url TEXT,
+        prediction VARCHAR(50),
+        confidence FLOAT,
+        risk_score INT,
+        ip VARCHAR(100),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
 
     conn.commit()
     conn.close()
 
-def get_scan_stats():
-    conn = connect_db()
+
+def save_scan(user_email, url, prediction, confidence, risk_score, ip):
+    conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT COUNT(*) FROM scans")
-    total_scans = cursor.fetchone()[0]
+    cursor.execute("""
+    INSERT INTO scans (user_email, url, prediction, confidence, risk_score, ip)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """, (user_email, url, prediction, confidence, risk_score, ip))
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE prediction='Phishing'")
-    phishing_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE prediction='Safe'")
-    safe_count = cursor.fetchone()[0]
-
+    conn.commit()
     conn.close()
-
-    return {
-        "total_scans": total_scans,
-        "phishing_detected": phishing_count,
-        "safe_urls": safe_count
-    }
