@@ -5,3 +5,7 @@ __pycache__/
 venv/
 .env
 dataset.csv
+DATABASE_URL
+API_KEY
+JWT_SECRET_KEY
+SECRET_KEY
