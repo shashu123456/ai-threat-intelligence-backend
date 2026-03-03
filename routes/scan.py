@@ -1,46 +1,31 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-import sqlite3
-import datetime
-from config import Config
 from services.ml_service import analyze_url
+from models import save_scan_history
+from flask_limiter import Limiter
+import logging
+from datetime import datetime
 
 scan_bp = Blueprint("scan", __name__)
 
 @scan_bp.route("/scan", methods=["POST"])
 @jwt_required()
 def scan():
-    current_user = get_jwt_identity()
     data = request.get_json()
+    url = data.get("url")
 
-    if not data or "url" not in data:
+    if not url:
         return jsonify({"error": "URL required"}), 400
 
-    url = data["url"]
+    user = get_jwt_identity()
+    ip_address = request.remote_addr
 
     prediction, confidence, risk_score = analyze_url(url)
 
-    conn = sqlite3.connect(Config.DATABASE)
-    cursor = conn.cursor()
+    # Save to database
+    save_scan_history(user, url, prediction, confidence, risk_score, ip_address)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS scans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            url TEXT,
-            prediction TEXT,
-            confidence REAL,
-            timestamp TEXT
-        )
-    """)
-
-    cursor.execute("""
-        INSERT INTO scans (username, url, prediction, confidence, timestamp)
-        VALUES (?, ?, ?, ?, ?)
-    """, (current_user, url, prediction, confidence, str(datetime.datetime.now())))
-
-    conn.commit()
-    conn.close()
+    logging.info(f"User {user} scanned {url} from IP {ip_address}")
 
     return jsonify({
         "status": "success",
@@ -49,23 +34,8 @@ def scan():
             "prediction": prediction,
             "confidence_percentage": confidence,
             "risk_score": risk_score,
-            "scanned_by": current_user
+            "scanned_by": user,
+            "ip_address": ip_address,
+            "timestamp": datetime.utcnow().isoformat()
         }
-    }), 200
-
-
-@scan_bp.route("/history", methods=["GET"])
-@jwt_required()
-def history():
-    current_user = get_jwt_identity()
-
-    conn = sqlite3.connect(Config.DATABASE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT url, prediction, confidence, timestamp FROM scans WHERE username = ?",
-        (current_user,)
-    )
-    results = cursor.fetchall()
-    conn.close()
-
-    return jsonify(results), 200
+    })
