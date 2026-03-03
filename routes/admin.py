@@ -1,20 +1,23 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from models import get_scan_stats
+from database import get_connection
 
 admin_bp = Blueprint("admin", __name__)
 
-@admin_bp.route("/admin/stats", methods=["GET"])
+@admin_bp.route("/admin/stats")
 @jwt_required()
-def admin_stats():
+def stats():
     claims = get_jwt()
 
     if claims.get("role") != "admin":
-        return jsonify({"error": "Admin access required"}), 403
+        return jsonify({"error": "Admin only"}), 403
 
-    stats = get_scan_stats()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    return jsonify({
-        "status": "success",
-        "data": stats
-    })
+    cursor.execute("SELECT COUNT(*) FROM scans")
+    total = cursor.fetchone()[0]
+
+    conn.close()
+
+    return jsonify({"total_scans": total})

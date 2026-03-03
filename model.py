@@ -1,36 +1,44 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-import pickle
+from database import get_connection
 
-# Load dataset
-data = pd.read_csv("dataset.csv")
+def create_tables():
+    conn = get_connection()
+    cursor = conn.cursor()
 
-X = data.drop("label", axis=1)
-y = data["label"]
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        password BYTEA,
+        role VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
 
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS scans (
+        id SERIAL PRIMARY KEY,
+        user_email VARCHAR(255),
+        url TEXT,
+        prediction VARCHAR(50),
+        confidence FLOAT,
+        risk_score INT,
+        ip VARCHAR(100),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
 
-# Use stronger model
-model = RandomForestClassifier(n_estimators=100)
-model.fit(X_train, y_train)
+    conn.commit()
+    conn.close()
 
-# Evaluate
-y_pred = model.predict(X_test)
 
-accuracy = accuracy_score(y_test, y_pred)
+def save_scan(user_email, url, prediction, confidence, risk_score, ip):
+    conn = get_connection()
+    cursor = conn.cursor()
 
-print("\nModel Accuracy:", accuracy)
-print("\nClassification Report:\n")
-print(classification_report(y_test, y_pred))
+    cursor.execute("""
+    INSERT INTO scans (user_email, url, prediction, confidence, risk_score, ip)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    """, (user_email, url, prediction, confidence, risk_score, ip))
 
-print("\nConfusion Matrix:\n")
-print(confusion_matrix(y_test, y_pred))
-# Save model
-pickle.dump(model, open("phishing_model.pkl", "wb"))
-
-print("Model trained and saved successfully!")
+    conn.commit()
+    conn.close()
