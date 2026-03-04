@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Admin Security Panel</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="terminal">
+
+<h1>ADMIN SECURITY CONTROL</h1>
+
+<p>System Status: ONLINE</p>
+
+<p>Threat Engine: ACTIVE</p>
+
+<p>Database: CONNECTED</p>
+
+<p>API Gateway: RUNNING</p>
+
+<button onclick="viewLogs()">View Scan Logs</button>
+
+<pre id="logs"></pre>
+
+</div>
+
+<script>
+
+async function viewLogs(){
+
+const API = "https://ai-threat-intelligence-backend.onrender.com"
+
+let res = await fetch(API + "/admin/stats")
+
+let data = await res.json()
+
+document.getElementById("logs").innerHTML =
+JSON.stringify(data,null,2)
+
+}
+
+</script>
+
+</body>
+</html>

@@ -34,6 +34,25 @@ catch(err){
 
 output.innerHTML =
 "Connection Failed\nBackend API not reachable"
+setInterval(generateAttack,3000)
+
+function generateAttack(){
+
+let attacks = [
+"Phishing URL detected",
+"Suspicious login attempt",
+"Malware domain flagged",
+"Brute force attack detected",
+"API abuse attempt blocked"
+]
+
+let log = attacks[Math.floor(Math.random()*attacks.length)]
+
+let monitor = document.getElementById("liveMonitor")
+
+monitor.innerHTML += log + "\n"
+
+}
 
 }
 
