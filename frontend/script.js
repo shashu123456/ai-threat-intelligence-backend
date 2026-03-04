@@ -1,4 +1,4 @@
-const API = "https://ai-threat-intelligence-backend.onrender.com"
+const API = "https://ai-threat-intelligence-backend.onrender.com";
 
 
 // Check authentication
@@ -10,46 +10,51 @@ if(!localStorage.getItem("token")){
 // Scan URL using backend API
 async function scanURL(){
 
-    let url = document.getElementById("urlInput").value
-    let output = document.getElementById("output")
+const url=document.getElementById("urlInput").value;
+const token=localStorage.getItem("token");
 
-    let token = localStorage.getItem("token")
+const result=document.getElementById("result");
 
-    output.innerHTML = "Scanning target...\n"
+result.innerHTML="Scanning target...";
 
-    try{
+try{
 
-        let res = await fetch(API + "/scan/url", {
+const response=await fetch(API+"/scan/url",{
 
-            method: "POST",
+method:"POST",
 
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer "+token
+},
 
-            body: JSON.stringify({
-                url: url
-            })
+body:JSON.stringify({
+url:url
+})
 
-        })
+});
 
-        let data = await res.json()
+if(!response.ok){
+throw new Error("API error");
+}
 
-        console.log(data)
+const data=await response.json();
 
-        output.innerHTML =
-        "Target: " + data.url +
-        "\nPrediction: " + data.prediction +
-        "\nConfidence: " + data.confidence +
-        "\nRisk Score: " + data.risk_score
+result.innerHTML=
+`
+Target: ${data.url}
+Prediction: ${data.prediction}
+Confidence: ${data.confidence}
+Risk Score: ${data.risk_score}
+`;
 
-    }
-    catch(error){
+}
 
-        output.innerHTML = "Error connecting to threat engine"
+catch(error){
 
-    }
+result.innerHTML="Error connecting to threat engine";
+
+}
 
 }
 
