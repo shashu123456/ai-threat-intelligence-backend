@@ -1,59 +1,92 @@
 const API = "https://ai-threat-intelligence-backend.onrender.com"
 
+
+// Check authentication
+if(!localStorage.getItem("token")){
+    window.location = "login.html"
+}
+
+
+// Scan URL using backend API
 async function scanURL(){
 
-let url = document.getElementById("urlInput").value
-let output = document.getElementById("output")
+    let url = document.getElementById("urlInput").value
+    let output = document.getElementById("output")
 
-output.innerHTML = "Scanning target...\n"
+    let token = localStorage.getItem("token")
 
-try{
+    output.innerHTML = "Scanning target...\n"
 
-let res = await fetch(API + "/scan/url",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body: JSON.stringify({
-url:url
-})
-})
+    try{
 
-let data = await res.json()
+        let res = await fetch(API + "/scan/url", {
 
-console.log(data)
+            method: "POST",
 
-output.innerHTML =
-"Target: " + url +
-"\nPrediction: " + data.prediction +
-"\nConfidence: " + data.confidence +
-"\nRisk Score: " + data.risk_score
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+
+            body: JSON.stringify({
+                url: url
+            })
+
+        })
+
+        let data = await res.json()
+
+        console.log(data)
+
+        output.innerHTML =
+        "Target: " + data.url +
+        "\nPrediction: " + data.prediction +
+        "\nConfidence: " + data.confidence +
+        "\nRisk Score: " + data.risk_score
+
+    }
+    catch(error){
+
+        output.innerHTML = "Error connecting to threat engine"
+
+    }
 
 }
-catch(err){
 
-output.innerHTML =
-"Connection Failed\nBackend API not reachable"
-setInterval(generateAttack,3000)
+
+// Logout function
+function logout(){
+
+    localStorage.removeItem("token")
+
+    window.location = "login.html"
+
+}
+
+
+// Live attack monitor simulation
+setInterval(generateAttack, 3000)
 
 function generateAttack(){
 
-let attacks = [
-"Phishing URL detected",
-"Suspicious login attempt",
-"Malware domain flagged",
-"Brute force attack detected",
-"API abuse attempt blocked"
-]
+    let attacks = [
+        "Phishing URL detected",
+        "Malware domain flagged",
+        "Suspicious login attempt blocked",
+        "Brute force attack detected",
+        "API abuse attempt blocked",
+        "Command injection attempt detected",
+        "XSS attack prevented",
+        "SQL injection blocked"
+    ]
 
-let log = attacks[Math.floor(Math.random()*attacks.length)]
+    let attack = attacks[Math.floor(Math.random() * attacks.length)]
 
-let monitor = document.getElementById("liveMonitor")
+    let monitor = document.getElementById("liveMonitor")
 
-monitor.innerHTML += log + "\n"
-
-}
-
-}
+    if(monitor){
+        monitor.innerHTML += attack + "\n"
+        monitor.scrollTop = monitor.scrollHeight
+    }
 
 }
