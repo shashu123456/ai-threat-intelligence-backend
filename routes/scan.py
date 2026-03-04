@@ -1,32 +1,82 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from services.ml_service import analyze_url
-from models import save_scan
-from config import Config
+
+import pickle
+
+from database import get_connection
 
 scan_bp = Blueprint("scan", __name__)
 
-@scan_bp.route("/scan", methods=["POST"])
-@jwt_required()
-def scan():
-    api_key = request.headers.get("X-API-KEY")
+model = pickle.load(open("phishing_model.pkl", "rb"))
 
-    if api_key != Config.API_KEY:
-        return jsonify({"error": "Invalid API Key"}), 403
+
+@scan_bp.route("/url", methods=["POST"])
+@jwt_required()
+def scan_url():
 
     data = request.get_json()
-    url = data.get("url")
+
+    url = data["url"]
+
+    features = [len(url), url.count("."), url.count("-"), url.count("@")]
+
+    prediction = model.predict([features])[0]
+
+    confidence = model.predict_proba([features])[0].max()
+
+    result = "phishing" if prediction == 1 else "safe"
+
+    risk_score = int(confidence * 100)
 
     user = get_jwt_identity()
-    ip = request.remote_addr
 
-    prediction, confidence, risk_score = analyze_url(url)
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    save_scan(user, url, prediction, confidence, risk_score, ip)
+    cursor.execute(
+        "INSERT INTO scans (user_email,url,prediction,confidence,risk_score,ip) VALUES (%s,%s,%s,%s,%s,%s)",
+        (user, url, result, confidence, risk_score, request.remote_addr)
+    )
 
-    return jsonify({
+    conn.commit()
+    conn.close()
+
+    return {
         "url": url,
-        "prediction": prediction,
+        "prediction": result,
         "confidence": confidence,
         "risk_score": risk_score
-    })
+    }
+
+
+@scan_bp.route("/history", methods=["GET"])
+@jwt_required()
+def history():
+
+    user = get_jwt_identity()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT url,prediction,confidence,risk_score,timestamp FROM scans WHERE user_email=%s",
+        (user,)
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    history = []
+
+    for r in rows:
+
+        history.append({
+            "url": r[0],
+            "prediction": r[1],
+            "confidence": r[2],
+            "risk_score": r[3],
+            "timestamp": str(r[4])
+        })
+
+    return {"history": history}
