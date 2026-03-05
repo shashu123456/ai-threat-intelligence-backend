@@ -11,6 +11,7 @@ from routes.auth import auth_bp
 from routes.scan import scan_bp
 from routes.analytics import analytics_bp
 from routes.soc import soc_bp
+from flask import render_template
 
 app = Flask(__name__)
 
@@ -35,6 +36,18 @@ app.register_blueprint(soc_bp,url_prefix="/soc")
 def home():
 
     return {"message":"AI Threat Intelligence API running"}
+@app.route("/login")
+def login_page():
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard_page():
+    return render_template("dashboard.html")
+
+@app.route("/scanner")
+def scanner_page():
+    return render_template("index.html")
+
 
 if __name__ == "__main__":
 

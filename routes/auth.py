@@ -6,26 +6,34 @@ from database import get_connection
 
 auth_bp = Blueprint("auth",__name__)
 
-@auth_bp.route("/register",methods=["POST"])
+@auth_bp.route("/register", methods=["POST"])
 def register():
 
-    data=request.get_json()
+    try:
 
-    email=data["email"]
-    password=data["password"]
+        data = request.get_json()
 
-    hashed=bcrypt.hashpw(password.encode(),bcrypt.gensalt()).decode()
+        email = data["email"]
+        password = data["password"]
 
-    conn=get_connection()
-    cursor=conn.cursor()
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode("utf-8")
 
-    cursor.execute("INSERT INTO users(email,password) VALUES(%s,%s)",
-                   (email,hashed))
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        cursor.execute(
+            "INSERT INTO users (email, password) VALUES (%s, %s)",
+            (email, hashed)
+        )
 
-    return {"message":"user created"}
+        conn.commit()
+        conn.close()
+
+        return {"message": "user created"}
+
+    except Exception as e:
+
+        return {"error": str(e)}, 500
 
 @auth_bp.route("/login",methods=["POST"])
 def login():
