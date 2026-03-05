@@ -6,17 +6,21 @@ def create_tables():
     cursor = conn.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
+
+    CREATE TABLE IF NOT EXISTS users(
+
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE,
-        password BYTEA,
-        role TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        password TEXT
+
     )
+
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS scans (
+
+    CREATE TABLE IF NOT EXISTS scans(
+
         id SERIAL PRIMARY KEY,
         user_email TEXT,
         url TEXT,
@@ -25,7 +29,9 @@ def create_tables():
         risk_score INTEGER,
         ip TEXT,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
     )
+
     """)
 
     conn.commit()

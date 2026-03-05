@@ -1,11 +1,11 @@
 Flask
 flask-jwt-extended
-flask-limiter
 flask-cors
-flasgger
+flask-limiter
 bcrypt
 psycopg2-binary
 gunicorn
 scikit-learn
-pandas
 numpy
+pandas
+requests

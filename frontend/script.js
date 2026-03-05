@@ -1,97 +1,91 @@
 const API = "https://ai-threat-intelligence-backend.onrender.com";
 
+function login() {
 
-// Check authentication
-if(!localStorage.getItem("token")){
-    window.location = "login.html"
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    fetch(API + "/auth/login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            email: email,
+            password: password
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.access_token){
+
+            localStorage.setItem("token", data.access_token);
+
+            window.location.href = "index.html";
+
+        } else {
+
+            document.getElementById("login_status").innerText = "Login Failed";
+
+        }
+
+    });
+
 }
 
 
-// Scan URL using backend API
-async function scanURL(){
+function scanURL(){
 
-const url=document.getElementById("urlInput").value;
-const token=localStorage.getItem("token");
+    const url = document.getElementById("url").value;
 
-const result=document.getElementById("result");
+    const token = localStorage.getItem("token");
 
-result.innerHTML="Scanning target...";
+    document.getElementById("result").innerText = "Scanning target...";
 
-try{
+    fetch(API + "/scan/url", {
 
-const response=await fetch(API+"/scan/url",{
+        method: "POST",
 
-method:"POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
 
-headers:{
-"Content-Type":"application/json",
-"Authorization":"Bearer "+token
-},
+        body: JSON.stringify({
+            url: url
+        })
 
-body:JSON.stringify({
-url:url
-})
+    })
+    .then(res => res.json())
+    .then(data => {
 
-});
-
-if(!response.ok){
-throw new Error("API error");
-}
-
-const data=await response.json();
-
-result.innerHTML=
-`
+        document.getElementById("result").innerText =
+        `
 Target: ${data.url}
+
 Prediction: ${data.prediction}
+
 Confidence: ${data.confidence}
+
 Risk Score: ${data.risk_score}
-`;
+        `;
+
+    })
+    .catch(err => {
+
+        document.getElementById("result").innerText =
+        "Error connecting to threat engine";
+
+    });
 
 }
 
-catch(error){
 
-result.innerHTML="Error connecting to threat engine";
-
-}
-
-}
-
-
-// Logout function
 function logout(){
 
-    localStorage.removeItem("token")
+localStorage.removeItem("token");
 
-    window.location = "login.html"
-
-}
-
-
-// Live attack monitor simulation
-setInterval(generateAttack, 3000)
-
-function generateAttack(){
-
-    let attacks = [
-        "Phishing URL detected",
-        "Malware domain flagged",
-        "Suspicious login attempt blocked",
-        "Brute force attack detected",
-        "API abuse attempt blocked",
-        "Command injection attempt detected",
-        "XSS attack prevented",
-        "SQL injection blocked"
-    ]
-
-    let attack = attacks[Math.floor(Math.random() * attacks.length)]
-
-    let monitor = document.getElementById("liveMonitor")
-
-    if(monitor){
-        monitor.innerHTML += attack + "\n"
-        monitor.scrollTop = monitor.scrollHeight
-    }
+window.location.href="login.html";
 
 }

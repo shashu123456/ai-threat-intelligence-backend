@@ -1,11 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
 
-<meta charset="UTF-8">
-
-<title>AI Threat Intelligence System</title>
+<title>AI Threat Intelligence Console</title>
 
 <link rel="stylesheet" href="style.css">
 
@@ -13,68 +11,24 @@
 
 <body>
 
-<div class="terminal">
-
 <h1>AI THREAT INTELLIGENCE SYSTEM</h1>
 
-<p class="sub">Secure Cyber Threat Scanner</p>
+<div>
 
-
-<!-- Navigation -->
-
-<div style="margin-bottom:20px">
-
-<button onclick="window.location='dashboard.html'">Threat Dashboard</button>
-
-<button onclick="window.location='admin.html'">Admin Panel</button>
-
-<button onclick="logout()">Logout</button>
-
-</div>
-
-
-<!-- URL Scanner -->
-
-<div class="scan-box">
-
-<input id="urlInput" placeholder="Enter URL to scan...">
+<input id="url" placeholder="Enter suspicious URL">
 
 <button onclick="scanURL()">SCAN</button>
 
+<button onclick="logout()">LOGOUT</button>
+
 </div>
 
-
-<!-- Scan Output -->
-
-<div class="result">
-
-<pre id="output">
+<pre id="result">
 
 System Ready...
 Awaiting target input...
 
 </pre>
-
-</div>
-
-
-<!-- Live Attack Monitor -->
-
-<h2 style="margin-top:30px">Live Attack Monitor</h2>
-
-<div class="result">
-
-<pre id="liveMonitor">
-
-Threat monitoring initialized...
-
-</pre>
-
-</div>
-
-
-</div>
-
 
 <script src="script.js"></script>
 
