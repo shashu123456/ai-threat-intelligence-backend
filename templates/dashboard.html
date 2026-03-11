@@ -3,30 +3,58 @@
 
 <head>
 
-<title>Threat Dashboard</title>
+<link rel="stylesheet" href="/static/dashboard.css">
 
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 </head>
 
 <body>
 
-<h1>Threat Intelligence Dashboard</h1>
+<div class="sidebar">
 
-<div class="stats">
+<h2>Cyber SOC</h2>
 
-<p>Total Scans: <span id="total"></span></p>
-
-<p>Phishing Detected: <span id="phishing"></span></p>
-
-<p>Safe URLs: <span id="safe"></span></p>
+<a onclick="showPanel('scan')">Scanner</a>
+<a onclick="showPanel('map')">Map</a>
+<a onclick="showPanel('analytics')">Analytics</a>
 
 </div>
 
-<button onclick="loadStats()">Refresh Stats</button>
+<div class="main">
 
-<script src="/static/script.js"></script>
+<div id="scan" class="panel">
+
+<input id="urlInput" placeholder="Enter URL">
+
+<button onclick="scan()">Scan</button>
+
+<div id="result"></div>
+
+</div>
+
+
+<div id="map" class="panel">
+
+<div id="worldMap"></div>
+
+</div>
+
+
+<div id="analytics" class="panel">
+
+<p>Total: <span id="total"></span></p>
+<p>Phishing: <span id="phishing"></span></p>
+<p>Safe: <span id="safe"></span></p>
+
+</div>
+
+</div>
+
+<script src="/static/dashboard.js"></script>
 
 </body>
-
 </html>

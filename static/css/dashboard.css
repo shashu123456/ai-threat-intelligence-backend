@@ -1,0 +1,27 @@
+body{
+margin:0;
+display:flex;
+background:#020617;
+color:white;
+font-family:Segoe UI;
+}
+
+.sidebar{
+width:200px;
+background:#020617;
+height:100vh;
+padding:20px;
+}
+
+.main{
+flex:1;
+padding:30px;
+}
+
+.panel{
+display:none;
+}
+
+#worldMap{
+height:400px;
+}

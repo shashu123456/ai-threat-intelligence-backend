@@ -1,30 +1,24 @@
-from flask import Blueprint
-from database import get_connection
+from flask import Blueprint, jsonify
+from models import URLScan
 
-analytics_bp = Blueprint("analytics",__name__)
+# create blueprint
+analytics_bp = Blueprint("analytics", __name__)
 
-@analytics_bp.route("/stats")
-
+@analytics_bp.route("/analytics/stats")
 def stats():
 
-    conn=get_connection()
-    cursor=conn.cursor()
+    total = URLScan.query.count()
 
-    cursor.execute("SELECT COUNT(*) FROM scans")
-    total=cursor.fetchone()[0]
+    phishing = URLScan.query.filter_by(
+        prediction="phishing"
+    ).count()
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE prediction='phishing'")
-    phishing=cursor.fetchone()[0]
+    safe = URLScan.query.filter_by(
+        prediction="safe"
+    ).count()
 
-    cursor.execute("SELECT COUNT(*) FROM scans WHERE prediction='safe'")
-    safe=cursor.fetchone()[0]
-
-    conn.close()
-
-    return {
-
-        "total_scans":total,
-        "phishing_detected":phishing,
-        "safe_urls":safe
-
-    }
+    return jsonify({
+        "total_scans": total,
+        "phishing": phishing,
+        "safe": safe
+    })

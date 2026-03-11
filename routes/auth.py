@@ -1,61 +1,41 @@
-from flask import Blueprint,request
-from flask_jwt_extended import create_access_token
-import bcrypt
+from flask import Blueprint, request, jsonify
+from models import User
+from database import db
+import jwt
 
-from database import get_connection
+auth_bp = Blueprint("auth", __name__)
 
-auth_bp = Blueprint("auth",__name__)
+SECRET = "secret123"
 
-@auth_bp.route("/register", methods=["POST"])
+@auth_bp.route("/auth/register", methods=["POST"])
 def register():
 
-    try:
+    data = request.json
 
-        data = request.get_json()
+    user = User(
+        email=data["email"],
+        password=data["password"]
+    )
 
-        email = data["email"]
-        password = data["password"]
+    db.session.add(user)
+    db.session.commit()
 
-        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode("utf-8")
+    return {"message": "registered"}
 
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "INSERT INTO users (email, password) VALUES (%s, %s)",
-            (email, hashed)
-        )
-
-        conn.commit()
-        conn.close()
-
-        return {"message": "user created"}
-
-    except Exception as e:
-
-        return {"error": str(e)}, 500
-
-@auth_bp.route("/login",methods=["POST"])
+@auth_bp.route("/auth/login", methods=["POST"])
 def login():
 
-    data=request.get_json()
+    data = request.json
 
-    email=data["email"]
-    password=data["password"]
+    user = User.query.filter_by(email=data["email"]).first()
 
-    conn=get_connection()
-    cursor=conn.cursor()
+    if not user:
+        return {"error": "user not found"}, 401
 
-    cursor.execute("SELECT password FROM users WHERE email=%s",(email,))
+    token = jwt.encode(
+        {"email": user.email},
+        SECRET,
+        algorithm="HS256"
+    )
 
-    row=cursor.fetchone()
-
-    conn.close()
-
-    if row and bcrypt.checkpw(password.encode(),row[0].encode()):
-
-        token=create_access_token(identity=email)
-
-        return {"access_token":token}
-
-    return {"error":"invalid credentials"}
+    return {"token": token}
