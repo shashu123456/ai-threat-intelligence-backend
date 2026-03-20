@@ -1,33 +1,40 @@
-import re
-import math
 from urllib.parse import urlparse
-
-SUSPICIOUS_WORDS = [
-    "login","verify","bank","account","secure","update","password"
-]
-
-def entropy(string):
-    prob = [float(string.count(c)) / len(string) for c in dict.fromkeys(list(string))]
-    return -sum([p * math.log(p) / math.log(2.0) for p in prob])
+import re
 
 def extract_features(url):
 
-    parsed = urlparse(url)
-    domain = parsed.netloc
+    parsed=urlparse(url)
 
-    features = {}
+    features=[]
 
-    features["url_length"] = len(url)
-    features["num_dots"] = url.count(".")
-    features["num_hyphens"] = url.count("-")
-    features["num_special_chars"] = len(re.findall(r"[^\w]", url))
-    features["entropy"] = entropy(url)
+    features.append(len(url))
 
-    features["domain_length"] = len(domain)
-    features["num_subdomains"] = domain.count(".") - 1
+    features.append(url.count("."))
 
-    features["suspicious_words"] = sum(word in url for word in SUSPICIOUS_WORDS)
+    features.append(url.count("-"))
 
-    features["has_ip"] = 1 if re.search(r"\d+\.\d+\.\d+\.\d+", url) else 0
+    features.append(len(re.findall(r'\d',url)))
 
-    return list(features.values())
+    features.append(1 if parsed.scheme=="https" else 0)
+
+    keywords=["login","verify","secure","account","update","bank"]
+
+    k=0
+
+    for w in keywords:
+
+        if w in url.lower():
+
+            k+=1
+
+    features.append(k)
+
+    features.append(1 if "@" in url else 0)
+
+    ip_pattern=r'\d+\.\d+\.\d+\.\d+'
+
+    features.append(1 if re.search(ip_pattern,url) else 0)
+
+    features.append(parsed.netloc.count("."))
+
+    return features

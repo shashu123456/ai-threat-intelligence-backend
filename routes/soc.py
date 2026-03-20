@@ -1,39 +1,22 @@
-from flask import Blueprint
-from database import get_connection
+from flask import Blueprint, jsonify
+from models import URLScan
 
-soc_bp = Blueprint("soc",__name__)
+soc_bp = Blueprint("soc", __name__)
 
-@soc_bp.route("/events")
 
-def events():
+@soc_bp.route("/timeline")
+def timeline():
 
-    conn=get_connection()
-    cursor=conn.cursor()
-
-    cursor.execute("""
-
-    SELECT url,prediction,risk_score,timestamp
-    FROM scans
-    ORDER BY timestamp DESC
-    LIMIT 20
-
-    """)
-
-    rows=cursor.fetchall()
-
-    conn.close()
+    scans = URLScan.query.order_by(URLScan.id.desc()).limit(10).all()
 
     events=[]
 
-    for r in rows:
+    for scan in scans:
 
         events.append({
-
-            "url":r[0],
-            "prediction":r[1],
-            "risk":r[2],
-            "time":str(r[3])
-
+            "url":scan.url,
+            "prediction":scan.prediction,
+            "risk":scan.risk_score
         })
 
     return {"events":events}

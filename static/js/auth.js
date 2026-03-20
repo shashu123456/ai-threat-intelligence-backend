@@ -3,19 +3,26 @@ async function register(){
 let email=document.getElementById("email").value
 let password=document.getElementById("password").value
 
-await fetch("/auth/register",{
+let res=await fetch("/auth/register",{
 
 method:"POST",
 
-headers:{"Content-Type":"application/json"},
+headers:{
+"Content-Type":"application/json"
+},
 
 body:JSON.stringify({email,password})
 
 })
 
+let data=await res.json()
+
+alert(data.message)
+
 window.location="/login"
 
 }
+
 
 async function login(){
 
@@ -26,7 +33,9 @@ let res=await fetch("/auth/login",{
 
 method:"POST",
 
-headers:{"Content-Type":"application/json"},
+headers:{
+"Content-Type":"application/json"
+},
 
 body:JSON.stringify({email,password})
 
@@ -34,8 +43,16 @@ body:JSON.stringify({email,password})
 
 let data=await res.json()
 
+if(data.token){
+
 localStorage.setItem("token",data.token)
 
 window.location="/dashboard"
+
+}else{
+
+alert("Invalid login")
+
+}
 
 }

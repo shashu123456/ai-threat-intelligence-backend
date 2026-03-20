@@ -1,42 +1,30 @@
 from flask import Blueprint, request, jsonify
-from models import URLScan
-from database import db
-import random
+from services.ai_engine import predict_url
+from services.threat_feed import threat_score
+from services.domain_intelligence import analyze_domain
+from models import ScanLog
+from extensions import db
 
-# create blueprint
 scan_bp = Blueprint("scan", __name__)
 
-@scan_bp.route("/scan", methods=["POST"])
+@scan_bp.route("/", methods=["POST"])
 def scan():
+    url = request.json['url']
 
-    data = request.get_json()
+    pred, ml_score = predict_url(url)
+    threat = threat_score(url)
+    domain = analyze_domain(url)
 
-    url = data.get("url")
+    final_score = min(100, ml_score + threat)
 
-    # demo prediction
-    prediction = random.choice(["phishing", "safe"])
+    result = "PHISHING" if final_score > 60 else "SAFE"
 
-    risk_score = random.randint(20, 90)
-
-    # store in database
-    scan_record = URLScan(
-        url=url,
-        prediction=prediction,
-        risk_score=risk_score
-    )
-
-    db.session.add(scan_record)
+    log = ScanLog(url=url, result=result, risk_score=final_score)
+    db.session.add(log)
     db.session.commit()
 
-    # fake location for map
-    location = {
-        "lat": 28.61,
-        "lon": 77.20,
-        "city": "Delhi"
-    }
-
     return jsonify({
-        "prediction": prediction,
-        "risk_score": risk_score,
-        "location": location
+        "result": result,
+        "risk_score": final_score,
+        "domain": domain
     })

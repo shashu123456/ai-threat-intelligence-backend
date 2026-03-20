@@ -1,11 +1,24 @@
+# Python
 __pycache__/
 *.pyc
-*.pkl
-*.db
+*.pyo
+
+# Virtual env
 venv/
-.env
-dataset.csv
-DATABASE_URL
-API_KEY
-JWT_SECRET_KEY
-SECRET_KEY
+env/
+
+# Database
+*.db
+
+# Model files (optional - large)
+model/phishing_model.pkl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs
+*.log

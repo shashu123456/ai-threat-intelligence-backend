@@ -1,19 +1,16 @@
 from sklearn.ensemble import IsolationForest
 import numpy as np
 
-# create anomaly model
+training_data = np.random.rand(200,5)
+
 model = IsolationForest(contamination=0.1)
-
-# fake training data just for initialization
-training_data = np.random.rand(200,3)
-
 model.fit(training_data)
 
 
-def detect_anomaly(risk_score, url_length, dot_count):
+def detect_anomaly(features):
 
-    X = [[risk_score, url_length, dot_count]]
+    features = np.array(features).reshape(1,-1)
 
-    score = model.decision_function(X)[0]
+    prediction = model.predict(features)
 
-    return float(score)
+    return prediction[0] == -1

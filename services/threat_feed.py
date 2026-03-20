@@ -1,28 +1,19 @@
 import requests
 
-API_KEY="YOUR_API_KEY"
+def check_openphish(url):
+    try:
+        data = requests.get("https://openphish.com/feed.txt").text
+        return url in data
+    except:
+        return False
 
-def check_ip(ip):
+def check_phishtank(url):
+    return "phish" in url  # mock
 
-    url=f"https://api.abuseipdb.com/api/v2/check"
-
-    headers={
-    "Key":API_KEY,
-    "Accept":"application/json"
-    }
-
-    params={"ipAddress":ip}
-
-    r=requests.get(url,headers=headers,params=params)
-
-    return r.json()
-
-@scan_bp.route("/intel/ip")
-
-def intel_ip():
-
-    ip=request.args.get("ip")
-
-    data=check_ip(ip)
-
-    return data
+def threat_score(url):
+    score = 0
+    if check_openphish(url):
+        score += 40
+    if check_phishtank(url):
+        score += 30
+    return score

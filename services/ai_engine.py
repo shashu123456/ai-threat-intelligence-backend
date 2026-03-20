@@ -1,32 +1,20 @@
-import os
 import pickle
 import numpy as np
-from utils.feature_extractor import extract_features
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+model = pickle.load(open("model/phishing_model.pkl", "rb"))
 
-MODEL_PATH = os.path.join(BASE_DIR, "model", "phishing_model.pkl")
+def extract_features(url):
+    return [
+        len(url),
+        url.count('.'),
+        1 if "https" in url else 0,
+        1 if "login" in url or "verify" in url else 0,
+        len(url.split("//")[-1])
+    ]
 
-with open(MODEL_PATH, "rb") as f:
-    model = pickle.load(f)
+def predict_url(url):
+    features = np.array(extract_features(url)).reshape(1, -1)
+    pred = model.predict(features)[0]
+    prob = model.predict_proba(features)[0][1]
 
-
-def scan_url(url):
-
-    features = extract_features(url)
-
-    features = np.array(features).reshape(1, -1)
-
-    prediction = model.predict(features)[0]
-
-    prob = model.predict_proba(features)[0][prediction]
-
-    result = "phishing" if prediction == 1 else "safe"
-
-    risk_score = int(prob * 100)
-
-    return {
-        "prediction": result,
-        "confidence": round(prob, 2),
-        "risk_score": risk_score,
-    }
+    return pred, int(prob * 100)

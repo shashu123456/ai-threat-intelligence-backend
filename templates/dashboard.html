@@ -1,60 +1,24 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
-<link rel="stylesheet" href="/static/dashboard.css">
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
+<link rel="stylesheet" href="/static/css/style.css">
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 </head>
 
 <body>
-
 <div class="sidebar">
-
 <h2>Cyber SOC</h2>
-
-<a onclick="showPanel('scan')">Scanner</a>
-<a onclick="showPanel('map')">Map</a>
-<a onclick="showPanel('analytics')">Analytics</a>
-
 </div>
 
 <div class="main">
-
-<div id="scan" class="panel">
-
-<input id="urlInput" placeholder="Enter URL">
-
+<input id="url" placeholder="Enter URL">
 <button onclick="scan()">Scan</button>
 
 <div id="result"></div>
 
+<div id="map" style="height:300px;"></div>
 </div>
 
-
-<div id="map" class="panel">
-
-<div id="worldMap"></div>
-
-</div>
-
-
-<div id="analytics" class="panel">
-
-<p>Total: <span id="total"></span></p>
-<p>Phishing: <span id="phishing"></span></p>
-<p>Safe: <span id="safe"></span></p>
-
-</div>
-
-</div>
-
-<script src="/static/dashboard.js"></script>
-
+<script src="/static/js/main.js"></script>
 </body>
 </html>

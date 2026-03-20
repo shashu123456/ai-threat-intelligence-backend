@@ -1,24 +1,16 @@
 from flask import Blueprint, jsonify
-from models import URLScan
+from models import ScanLog
 
-# create blueprint
 analytics_bp = Blueprint("analytics", __name__)
 
-@analytics_bp.route("/analytics/stats")
+@analytics_bp.route("/")
 def stats():
-
-    total = URLScan.query.count()
-
-    phishing = URLScan.query.filter_by(
-        prediction="phishing"
-    ).count()
-
-    safe = URLScan.query.filter_by(
-        prediction="safe"
-    ).count()
+    total = ScanLog.query.count()
+    phishing = ScanLog.query.filter_by(result="PHISHING").count()
+    safe = ScanLog.query.filter_by(result="SAFE").count()
 
     return jsonify({
-        "total_scans": total,
+        "total": total,
         "phishing": phishing,
         "safe": safe
     })
