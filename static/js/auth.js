@@ -1,58 +1,35 @@
-async function register(){
+const email = document.getElementById("email");
+const password = document.getElementById("password");
 
-let email=document.getElementById("email").value
-let password=document.getElementById("password").value
+const emailError = document.getElementById("emailError");
+const bar = document.getElementById("bar");
+const text = document.getElementById("strengthText");
 
-let res=await fetch("/auth/register",{
+// EMAIL VALIDATION
+email.addEventListener("input", () => {
+    const val = email.value;
 
-method:"POST",
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+        emailError.textContent = "Invalid email format";
+    } else {
+        emailError.textContent = "";
+    }
+});
 
-headers:{
-"Content-Type":"application/json"
-},
+// PASSWORD STRENGTH
+password.addEventListener("input", () => {
+    let val = password.value;
+    let score = 0;
 
-body:JSON.stringify({email,password})
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
 
-})
+    const colors = ["red","orange","yellow","green"];
+    const labels = ["Weak","Fair","Good","Strong"];
 
-let data=await res.json()
-
-alert(data.message)
-
-window.location="/login"
-
-}
-
-
-async function login(){
-
-let email=document.getElementById("email").value
-let password=document.getElementById("password").value
-
-let res=await fetch("/auth/login",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({email,password})
-
-})
-
-let data=await res.json()
-
-if(data.token){
-
-localStorage.setItem("token",data.token)
-
-window.location="/dashboard"
-
-}else{
-
-alert("Invalid login")
-
-}
-
-}
+    bar.style.width = (score * 25) + "%";
+    bar.style.background = colors[score - 1] || "transparent";
+    text.textContent = labels[score - 1] || "";
+});

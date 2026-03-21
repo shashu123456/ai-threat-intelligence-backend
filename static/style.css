@@ -1,40 +1,50 @@
-body{
-
-font-family: Arial;
-background:#0f172a;
-color:white;
-
+body {
+    margin: 0;
+    background: #0a0f1c;
+    color: #00f0ff;
+    font-family: 'Courier New';
 }
 
-.container{
-
-display:flex;
-gap:40px;
-padding:20px;
-
+.sidebar {
+    width: 220px;
+    height: 100vh;
+    background: #111;
+    position: fixed;
+    padding: 20px;
 }
 
-.scan-box{
-
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-
+.sidebar ul {
+    list-style: none;
+    padding: 0;
 }
 
-.analytics{
-
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-
+.sidebar li {
+    padding: 10px;
+    cursor: pointer;
 }
 
-.feed{
+.sidebar li:hover {
+    background: #00f0ff;
+    color: black;
+}
 
-background:#1e293b;
-padding:20px;
-border-radius:10px;
-width:300px;
+.main {
+    margin-left: 240px;
+    padding: 20px;
+}
 
+.panel {
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none;
+}
+
+.terminal {
+    background: black;
+    color: lime;
+    padding: 10px;
+    height: 200px;
+    overflow-y: auto;
 }

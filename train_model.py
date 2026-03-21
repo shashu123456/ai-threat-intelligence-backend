@@ -1,13 +1,15 @@
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 import pickle
 
-df = pd.read_csv("dataset/dataset.csv")
+df = pd.read_csv("dataset.csv")
 
 X = df.drop("label", axis=1)
 y = df["label"]
 
-model = RandomForestClassifier()
+model = XGBClassifier()
 model.fit(X, y)
 
-pickle.dump(model, open("model/phishing_model.pkl", "wb"))
+pickle.dump(model, open("phishing_model.pkl", "wb"))
+
+print("Model trained successfully")

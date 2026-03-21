@@ -1,46 +1,52 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, redirect, render_template, session
 from models import User
 from extensions import db, bcrypt
-from flask_jwt_extended import create_access_token
-import re
 
-auth_bp = Blueprint("auth", __name__)
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-def is_valid_password(password):
-    return (
-        len(password) >= 8 and
-        re.search(r"[A-Z]", password) and
-        re.search(r"[0-9]", password) and
-        re.search(r"[!@#$%^&*]", password)
-    )
 
-@auth_bp.route("/register", methods=["POST"])
+@auth_bp.route("/register", methods=["GET", "POST"])
 def register():
-    data = request.json
-    email = data['email']
-    password = data['password']
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        return jsonify({"msg": "Invalid email"}), 400
+        if not email or not password:
+            return "Missing fields ❌"
 
-    if not is_valid_password(password):
-        return jsonify({"msg": "Weak password"}), 400
+        existing = User.query.filter_by(email=email).first()
+        if existing:
+            return "User already exists ❌"
 
-    hashed = bcrypt.generate_password_hash(password).decode()
+        hashed = bcrypt.generate_password_hash(password).decode()
 
-    user = User(email=email, password=hashed)
-    db.session.add(user)
-    db.session.commit()
+        user = User(email=email, password=hashed)
+        db.session.add(user)
+        db.session.commit()
 
-    return jsonify({"msg": "Registered successfully"})
+        return redirect("/auth/login")
 
-@auth_bp.route("/login", methods=["POST"])
+    return render_template("register.html")
+
+
+@auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    data = request.json
-    user = User.query.filter_by(email=data['email']).first()
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
 
-    if user and bcrypt.check_password_hash(user.password, data['password']):
-        token = create_access_token(identity=user.id)
-        return jsonify(access_token=token)
+        user = User.query.filter_by(email=email).first()
 
-    return jsonify({"msg": "Invalid credentials"}), 401
+        if user and bcrypt.check_password_hash(user.password, password):
+            session["user_id"] = user.id
+            return redirect("/dashboard")
+
+        return "Invalid credentials ❌"
+
+    return render_template("login.html")
+
+
+@auth_bp.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/auth/login")

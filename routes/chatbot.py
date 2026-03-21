@@ -1,16 +1,17 @@
 from flask import Blueprint, request, jsonify
 
-chatbot_bp = Blueprint("chatbot", __name__)
+chat_bp = Blueprint("chat", __name__)
 
-@chatbot_bp.route("/", methods=["POST"])
+@chat_bp.route("/chat", methods=["POST"])
 def chat():
-    msg = request.json["message"].lower()
+    message = request.json.get("message")
 
-    if "phishing" in msg:
-        reply = "Phishing is a cyber attack that tricks users into revealing sensitive data."
-    elif "prevent" in msg:
-        reply = "Always verify URLs, avoid unknown links, and use 2FA."
+    # Simple intelligent reply
+    if "phishing" in message.lower():
+        reply = "Phishing sites try to steal credentials. Avoid clicking unknown links."
+    elif "safe" in message.lower():
+        reply = "Always verify HTTPS and domain before trusting a website."
     else:
-        reply = "I can help explain threats and scan results."
+        reply = "I can help analyze URLs and detect threats."
 
-    return jsonify({"response": reply})
+    return jsonify({"reply": reply})

@@ -1,20 +1,16 @@
-import whois
-from datetime import datetime
+import socket
+from urllib.parse import urlparse
 
-def analyze_domain(url):
+def get_domain_info(url):
     try:
-        domain = url.split("//")[-1].split("/")[0]
-        w = whois.whois(domain)
-
-        creation = w.creation_date
-        if isinstance(creation, list):
-            creation = creation[0]
-
-        age_days = (datetime.now() - creation).days
+        domain = urlparse(url).netloc
+        ip = socket.gethostbyname(domain)
 
         return {
-            "domain_age": age_days,
-            "registrar": w.registrar
+            "domain": domain,
+            "ip": ip,
+            "age": "Unknown",
+            "registrar": "Unknown"
         }
     except:
-        return {"domain_age": 0, "registrar": "unknown"}
+        return {}

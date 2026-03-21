@@ -1,30 +1,59 @@
 from flask import Blueprint, request, jsonify
 from services.ai_engine import predict_url
-from services.threat_feed import threat_score
-from services.domain_intelligence import analyze_domain
-from models import ScanLog
-from extensions import db
+from services.geo_service import get_geo
+from services.threat_feed import check_threat_feeds
+from extensions import socketio
 
 scan_bp = Blueprint("scan", __name__)
 
-@scan_bp.route("/", methods=["POST"])
+@scan_bp.route("/scan", methods=["POST"])
 def scan():
-    url = request.json['url']
+    url = request.json.get("url")
 
-    pred, ml_score = predict_url(url)
-    threat = threat_score(url)
-    domain = analyze_domain(url)
+    socketio.emit("log", "URL received...")
+    socketio.emit("log", "Extracting features...")
 
-    final_score = min(100, ml_score + threat)
+    pred, prob = predict_url(url)
 
-    result = "PHISHING" if final_score > 60 else "SAFE"
+    socketio.emit("log", "Running ML model...")
+    socketio.emit("log", "Checking threat intelligence...")
 
-    log = ScanLog(url=url, result=result, risk_score=final_score)
-    db.session.add(log)
-    db.session.commit()
+    threat = check_threat_feeds(url)
 
-    return jsonify({
-        "result": result,
-        "risk_score": final_score,
-        "domain": domain
-    })
+    socketio.emit("log", "Fetching domain info...")
+    geo = get_geo(url)
+
+    socketio.emit("log", "Calculating risk score...")
+
+    risk = int(prob * 100)
+
+    if threat:
+        risk += 40
+
+    risk = min(risk, 100)
+
+    # ✅ EXPLANATION (FIXED — INSIDE FUNCTION)
+    explanation = []
+
+    if "login" in url:
+        explanation.append("Contains login keyword")
+
+    if len(url) > 50:
+        explanation.append("URL length suspicious")
+
+    if "@" in url:
+        explanation.append("Contains @ symbol")
+
+    socketio.emit("log", "Finalizing analysis...")
+    socketio.emit("log", "--------------------------")
+
+    result = {
+        "prediction": "PHISHING" if risk > 60 else "SAFE",
+        "risk": risk,
+        "geo": geo,
+        "explanation": explanation
+    }
+
+    socketio.emit("scan_result", result)
+
+    return jsonify(result)

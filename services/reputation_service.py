@@ -1,29 +1,13 @@
-from database import db, URLScan
-from datetime import datetime
+def check_reputation(url):
+    score = 0
 
-def get_cached_scan(url):
+    if "login" in url or "verify" in url:
+        score += 20
 
-    scan = URLScan.query.filter_by(url=url).first()
+    if url.count('.') > 5:
+        score += 20
 
-    if scan:
-        return {
-            "prediction": scan.prediction,
-            "confidence": scan.confidence,
-            "risk_score": scan.risk_score
-        }
+    if "http://" in url:
+        score += 20
 
-    return None
-
-
-def store_scan(url, result):
-
-    record = URLScan(
-        url=url,
-        prediction=result["prediction"],
-        confidence=result["confidence"],
-        risk_score=result["risk_score"],
-        timestamp=datetime.utcnow()
-    )
-
-    db.session.add(record)
-    db.session.commit()
+    return score
