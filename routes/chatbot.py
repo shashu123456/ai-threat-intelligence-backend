@@ -4,14 +4,18 @@ chat_bp = Blueprint("chat", __name__)
 
 @chat_bp.route("/chat", methods=["POST"])
 def chat():
-    message = request.json.get("message")
+    msg = request.json.get("message", "").lower()
 
-    # Simple intelligent reply
-    if "phishing" in message.lower():
-        reply = "Phishing sites try to steal credentials. Avoid clicking unknown links."
-    elif "safe" in message.lower():
-        reply = "Always verify HTTPS and domain before trusting a website."
-    else:
-        reply = "I can help analyze URLs and detect threats."
+    if "phishing" in msg:
+        return jsonify({"reply": "Phishing attacks mimic trusted websites to steal user credentials."})
 
-    return jsonify({"reply": reply})
+    if "url" in msg:
+        return jsonify({"reply": "Enter a URL in scanner. System will analyze risk using ML + threat APIs."})
+
+    if "risk" in msg:
+        return jsonify({"reply": "Risk score combines ML probability + Google Safe + AbuseIPDB."})
+
+    if "ip" in msg:
+        return jsonify({"reply": "IP shows attacker location resolved via DNS + geo APIs."})
+
+    return jsonify({"reply": "I can help analyze URLs, risks, phishing, and security concepts."})

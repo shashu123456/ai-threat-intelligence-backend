@@ -1,59 +1,72 @@
 from flask import Blueprint, request, jsonify
 from services.ai_engine import predict_url
 from services.geo_service import get_geo
-from services.threat_feed import check_threat_feeds
+from services.threat_intel import check_google_safe, check_abuse_ip
 from extensions import socketio
 
 scan_bp = Blueprint("scan", __name__)
 
 @scan_bp.route("/scan", methods=["POST"])
 def scan():
-    url = request.json.get("url")
+    try:
+        data = request.get_json()
+        url = data.get("url")
 
-    socketio.emit("log", "URL received...")
-    socketio.emit("log", "Extracting features...")
+        socketio.emit("log", "URL received...")
+        socketio.emit("log", "Extracting features...")
 
-    pred, prob = predict_url(url)
+        pred, prob = predict_url(url)
 
-    socketio.emit("log", "Running ML model...")
-    socketio.emit("log", "Checking threat intelligence...")
+        socketio.emit("log", "Running ML model...")
 
-    threat = check_threat_feeds(url)
+        geo = get_geo(url)
+        ip = geo.get("ip")
 
-    socketio.emit("log", "Fetching domain info...")
-    geo = get_geo(url)
+        socketio.emit("log", f"Resolved IP: {ip}")
 
-    socketio.emit("log", "Calculating risk score...")
+        google_threat = check_google_safe(url)
+        abuse_threat = check_abuse_ip(ip)
 
-    risk = int(prob * 100)
+        socketio.emit("log", "Calculating risk score...")
 
-    if threat:
-        risk += 40
+        risk = int(prob * 100)
 
-    risk = min(risk, 100)
+        if google_threat:
+            risk += 30
 
-    # ✅ EXPLANATION (FIXED — INSIDE FUNCTION)
-    explanation = []
+        if abuse_threat:
+            risk += 30
 
-    if "login" in url:
-        explanation.append("Contains login keyword")
+        risk = min(risk, 100)
 
-    if len(url) > 50:
-        explanation.append("URL length suspicious")
+        explanation = []
 
-    if "@" in url:
-        explanation.append("Contains @ symbol")
+        if url:
+            if "login" in url:
+                explanation.append("Contains login keyword")
+            if len(url) > 50:
+                explanation.append("Suspicious long URL")
+            if "@" in url:
+                explanation.append("Contains @ symbol")
 
-    socketio.emit("log", "Finalizing analysis...")
-    socketio.emit("log", "--------------------------")
+        if google_threat:
+            explanation.append("Flagged by Google Safe Browsing")
 
-    result = {
-        "prediction": "PHISHING" if risk > 60 else "SAFE",
-        "risk": risk,
-        "geo": geo,
-        "explanation": explanation
-    }
+        if abuse_threat:
+            explanation.append("Malicious IP (AbuseIPDB)")
 
-    socketio.emit("scan_result", result)
+        result = {
+            "prediction": "PHISHING" if risk > 60 else "SAFE",
+            "risk": risk,
+            "geo": geo,
+            "explanation": explanation,
+            "active": True if risk > 60 else False
+        }
 
-    return jsonify(result)
+        socketio.emit("scan_result", result)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("SCAN ERROR:", e)
+        return jsonify({"error": str(e)}), 500

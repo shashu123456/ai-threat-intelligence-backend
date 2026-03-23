@@ -9,12 +9,10 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite3"
 
-# INIT EXTENSIONS
 db.init_app(app)
 bcrypt.init_app(app)
 socketio.init_app(app)
 
-# REGISTER ROUTES
 app.register_blueprint(auth_bp)
 app.register_blueprint(scan_bp)
 app.register_blueprint(chat_bp)
@@ -32,4 +30,4 @@ if __name__ == "__main__":
         db.create_all()
 
     print("🚀 Running on http://127.0.0.1:5000")
-    socketio.run(app, host="127.0.0.1", port=5000)
+    socketio.run(app, debug=True)
