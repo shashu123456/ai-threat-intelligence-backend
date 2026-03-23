@@ -1,72 +1,131 @@
-from flask import Blueprint, request, jsonify
-from services.ai_engine import predict_url
-from services.geo_service import get_geo
-from services.threat_intel import check_google_safe, check_abuse_ip
-from extensions import socketio
+import json
+from flask import Blueprint, request, jsonify, current_app
+from flask_login import login_required, current_user
+from extensions import db, socketio, limiter
+from models import ScanResult, ThreatLog
+from services.ai_engine import AIEngine
+from services.geo_service import GeoService
+from services.threat_intel_service import ThreatIntelService
 
 scan_bp = Blueprint("scan", __name__)
+_ai = AIEngine()
+_geo = GeoService()
+
 
 @scan_bp.route("/scan", methods=["POST"])
-def scan():
-    try:
-        data = request.get_json()
-        url = data.get("url")
+@limiter.limit("30 per minute")
+def scan_url():
+    data = request.get_json(silent=True) or {}
+    url = (data.get("url") or "").strip()
 
-        socketio.emit("log", "URL received...")
-        socketio.emit("log", "Extracting features...")
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
 
-        pred, prob = predict_url(url)
+    # Normalise
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
 
-        socketio.emit("log", "Running ML model...")
+    # ── Step 1: emit progress ──────────────────────────────────────────────────
+    _emit_log("info", f"[SCAN] Initialising scan for {url}")
 
-        geo = get_geo(url)
-        ip = geo.get("ip")
+    # ── Step 2: Feature extraction + ML ───────────────────────────────────────
+    _emit_log("info", "[ML] Extracting URL features...")
+    features = _ai.extract_features(url)
+    prediction, confidence, risk_score, explanation = _ai.predict(url, features)
+    _emit_log(
+        "info" if prediction == "safe" else "warning",
+        f"[ML] Prediction: {prediction.upper()} | Risk: {risk_score:.0f}/100",
+    )
 
-        socketio.emit("log", f"Resolved IP: {ip}")
+    # ── Step 3: Geo resolution ─────────────────────────────────────────────────
+    _emit_log("info", "[GEO] Resolving domain to IP...")
+    geo_data = _geo.resolve(url)
+    ip_address = geo_data.get("ip", "")
+    _emit_log("info", f"[GEO] IP: {ip_address} → {geo_data.get('country', 'Unknown')}")
 
-        google_threat = check_google_safe(url)
-        abuse_threat = check_abuse_ip(ip)
+    # ── Step 4: Threat intelligence ───────────────────────────────────────────
+    _emit_log("info", "[INTEL] Querying threat intelligence feeds...")
+    threat_svc = ThreatIntelService(
+        gsb_key=current_app.config["GOOGLE_SAFE_BROWSING_KEY"],
+        abuseipdb_key=current_app.config["ABUSEIPDB_KEY"],
+        vt_key=current_app.config["VIRUSTOTAL_KEY"],
+    )
+    threat_data = threat_svc.check(url, ip_address)
 
-        socketio.emit("log", "Calculating risk score...")
+    # Merge external threat score into risk
+    if threat_data.get("flagged"):
+        risk_score = min(100, risk_score + 15)
+        _emit_log("warning", "[INTEL] URL flagged by external threat feed!")
 
-        risk = int(prob * 100)
+    # ── Step 5: Persist ────────────────────────────────────────────────────────
+    scan = ScanResult(
+        user_id=current_user.id if current_user.is_authenticated else None,
+        url=url,
+        risk_score=round(risk_score, 2),
+        prediction=prediction,
+        confidence=round(confidence, 4),
+        explanation=explanation,
+        features_json=json.dumps(features),
+        ip_address=ip_address,
+        geo_data_json=json.dumps(geo_data),
+        threat_data_json=json.dumps(threat_data),
+    )
+    db.session.add(scan)
 
-        if google_threat:
-            risk += 30
+    severity = _risk_to_severity(risk_score)
+    log = ThreatLog(
+        event_type="URL_SCAN",
+        severity=severity,
+        message=f"{prediction.upper()} detected: {url} (risk={risk_score:.0f})",
+        source_ip=ip_address,
+        target_url=url,
+    )
+    db.session.add(log)
+    db.session.commit()
 
-        if abuse_threat:
-            risk += 30
+    # ── Step 6: Socket broadcast ───────────────────────────────────────────────
+    result_payload = {
+        **scan.to_dict(),
+        "geo_data": geo_data,
+        "threat_data": threat_data,
+    }
 
-        risk = min(risk, 100)
+    socketio.emit("scan_result", result_payload)
+    socketio.emit("new_log", log.to_dict())
 
-        explanation = []
+    if risk_score >= 80:
+        socketio.emit(
+            "high_risk_alert",
+            {
+                "url": url,
+                "risk_score": risk_score,
+                "message": f"CRITICAL THREAT DETECTED — Risk Score {risk_score:.0f}/100",
+            },
+        )
+        _emit_log("critical", f"[ALERT] High-risk URL blocked: {url}")
 
-        if url:
-            if "login" in url:
-                explanation.append("Contains login keyword")
-            if len(url) > 50:
-                explanation.append("Suspicious long URL")
-            if "@" in url:
-                explanation.append("Contains @ symbol")
+    return jsonify(result_payload), 200
 
-        if google_threat:
-            explanation.append("Flagged by Google Safe Browsing")
 
-        if abuse_threat:
-            explanation.append("Malicious IP (AbuseIPDB)")
+@scan_bp.route("/scans/recent", methods=["GET"])
+def recent_scans():
+    scans = (
+        ScanResult.query.order_by(ScanResult.created_at.desc()).limit(50).all()
+    )
+    return jsonify([s.to_dict() for s in scans]), 200
 
-        result = {
-            "prediction": "PHISHING" if risk > 60 else "SAFE",
-            "risk": risk,
-            "geo": geo,
-            "explanation": explanation,
-            "active": True if risk > 60 else False
-        }
 
-        socketio.emit("scan_result", result)
+# ── Helpers ────────────────────────────────────────────────────────────────────
 
-        return jsonify(result)
+def _emit_log(level: str, message: str):
+    socketio.emit("scan_log", {"level": level, "message": message})
 
-    except Exception as e:
-        print("SCAN ERROR:", e)
-        return jsonify({"error": str(e)}), 500
+
+def _risk_to_severity(score: float) -> str:
+    if score >= 80:
+        return "critical"
+    if score >= 60:
+        return "high"
+    if score >= 40:
+        return "medium"
+    return "low"

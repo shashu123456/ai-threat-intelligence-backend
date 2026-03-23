@@ -1,106 +1,331 @@
-document.addEventListener("DOMContentLoaded", () => {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyberShield CTI — Threat Intelligence Platform</title>
 
-    const socket = io();
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="[cdnjs.cloudflare.com](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css)" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="[fonts.googleapis.com](https://fonts.googleapis.com)" />
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap)" rel="stylesheet" />
 
-    const urlInput = document.getElementById("urlInput");
-    const chatInput = document.getElementById("chatInput");
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+</head>
+<body>
 
-    /* DEFAULT PAGE */
-    show("scan");
+<!-- ═══════════════════════════════════════════════════════ SIDEBAR ══ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">
+      <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <div class="brand-text">
+      <span class="brand-name">CyberShield</span>
+      <span class="brand-sub">CTI Platform</span>
+    </div>
+  </div>
 
-    /* ENTER FIX */
-    urlInput.addEventListener("keydown", e => {
-        if (e.key === "Enter") scan();
-    });
+  <div class="sidebar-status">
+    <span class="status-dot active"></span>
+    <span class="status-text">System Operational</span>
+  </div>
 
-    chatInput.addEventListener("keydown", e => {
-        if (e.key === "Enter") sendChat();
-    });
+  <ul class="nav-list">
+    <li class="nav-item active" data-section="scanner" title="URL Scanner">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Scanner</span>
+    </li>
+    <li class="nav-item" data-section="map" title="Attack Map">
+      <i class="fa-solid fa-earth-americas"></i>
+      <span>Attack Map</span>
+    </li>
+    <li class="nav-item" data-section="logs" title="Threat Logs">
+      <i class="fa-solid fa-list-ul"></i>
+      <span>Threat Logs</span>
+      <span class="nav-badge" id="logBadge">0</span>
+    </li>
+    <li class="nav-item" data-section="assistant" title="AI Assistant">
+      <i class="fa-solid fa-robot"></i>
+      <span>AI Assistant</span>
+    </li>
+  </ul>
 
-    /* MAP INIT */
-    window.map = L.map('mapBox').setView([20, 78], 2);
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+      <div class="user-details">
+        <span class="user-name">Analyst</span>
+        <span class="user-role">SOC Level 2</span>
+      </div>
+    </div>
+    <a href="/auth/logout" class="logout-btn" title="Logout">
+      <i class="fa-solid fa-right-from-bracket"></i>
+    </a>
+  </div>
+</nav>
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-        .addTo(map);
+<!-- ════════════════════════════════════════════════════ MAIN AREA ══ -->
+<main class="main-content">
 
-    /* SOCKET RESULT */
-    socket.on("scan_result", data => {
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="breadcrumb">
+        <span id="currentSection">URL Scanner</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="threat-level" id="globalThreatLevel">
+        <span class="tl-label">Threat Level</span>
+        <span class="tl-value low" id="threatLevelValue">LOW</span>
+      </div>
+      <div class="topbar-clock" id="topbarClock"></div>
+      <div class="connection-indicator" id="connectionIndicator" title="Socket connection">
+        <i class="fa-solid fa-circle"></i>
+        <span>Live</span>
+      </div>
+    </div>
+  </header>
 
-        const box = document.getElementById("result");
+  <!-- ALERT BANNER (hidden by default) -->
+  <div class="alert-banner" id="alertBanner" style="display:none;">
+    <div class="alert-content">
+      <i class="fa-solid fa-triangle-exclamation fa-beat"></i>
+      <span id="alertMessage">CRITICAL THREAT DETECTED</span>
+    </div>
+    <button class="alert-close" onclick="dismissAlert()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
 
-        if (data.prediction === "PHISHING") {
-            box.innerHTML = "🚨 PHISHING | Risk: " + data.risk + "%";
-        } else {
-            box.innerHTML = "SAFE | Risk: " + data.risk + "%";
-        }
+  <!-- ══════════════════════════════════════════ SCANNER SECTION ══ -->
+  <section class="content-section active" id="section-scanner">
+    <div class="section-header">
+      <h2><i class="fa-solid fa-magnifying-glass-chart"></i> URL Threat Scanner</h2>
+      <p class="section-sub">Multi-layer AI + threat intelligence analysis</p>
+    </div>
 
-        updateMap(data.geo);
-    });
+    <!-- Scanner Input -->
+    <div class="scanner-card glass-card">
+      <div class="scanner-input-wrap">
+        <div class="input-icon"><i class="fa-solid fa-link"></i></div>
+        <input
+          type="text"
+          id="urlInput"
+          class="url-input"
+          placeholder="Enter URL to analyze  (e.g. [suspicious-site.tk](https://suspicious-site.tk/login)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="scan-btn" id="scanBtn" onclick="startScan()">
+          <span class="btn-text"><i class="fa-solid fa-radar"></i> Scan</span>
+          <span class="btn-loading" style="display:none;">
+            <i class="fa-solid fa-spinner fa-spin"></i> Scanning...
+          </span>
+        </button>
+      </div>
+      <div class="scanner-meta">
+        <span><i class="fa-solid fa-bolt"></i> Press Enter to scan</span>
+        <span><i class="fa-solid fa-shield-check"></i> Powered by RandomForest + GSB + AbuseIPDB + VirusTotal</span>
+      </div>
+    </div>
 
-});
+    <!-- Scan Progress -->
+    <div class="scan-progress" id="scanProgress" style="display:none;">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-steps" id="progressSteps">
+        <span class="step" id="step1"><i class="fa-solid fa-circle-notch fa-spin"></i> Extracting features...</span>
+      </div>
+    </div>
 
+    <!-- Result Card -->
+    <div class="result-card glass-card" id="resultCard" style="display:none;">
+      <div class="result-header">
+        <div class="result-verdict" id="resultVerdict">
+          <div class="verdict-icon" id="verdictIcon">
+            <i class="fa-solid fa-shield-check"></i>
+          </div>
+          <div class="verdict-text">
+            <h3 id="verdictTitle">SAFE</h3>
+            <p id="verdictUrl" class="verdict-url"></p>
+          </div>
+        </div>
+        <div class="result-score">
+          <div class="score-ring" id="scoreRing">
+            <svg viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="40" />
+              <circle class="ring-fill" id="ringFill" cx="50" cy="50" r="40"
+                stroke-dasharray="251.2"
+                stroke-dashoffset="251.2" />
+            </svg>
+            <span class="score-value" id="scoreValue">0</span>
+          </div>
+          <p class="score-label">Risk Score</p>
+        </div>
+      </div>
 
-/* NAV */
-function show(id) {
+      <div class="result-body">
+        <div class="result-explanation" id="resultExplanation"></div>
 
-    document.querySelectorAll(".section").forEach(s => {
-        s.classList.remove("active");
-    });
+        <div class="result-grid">
+          <div class="result-tile">
+            <span class="tile-label"><i class="fa-solid fa-location-dot"></i> Origin</span>
+            <span class="tile-value" id="tileCountry">—</span>
+          </div>
+          <div class="result-tile">
+            <span class="tile-label"><i class="fa-solid fa-network-wired"></i> IP Address</span>
+            <span class="tile-value mono" id="tileIP">—</span>
+          </div>
+          <div class="result-tile">
+            <span class="tile-label"><i class="fa-solid fa-brain"></i> Confidence</span>
+            <span class="tile-value" id="tileConfidence">—</span>
+          </div>
+          <div class="result-tile">
+            <span class="tile-label"><i class="fa-solid fa-bug-slash"></i> Threat Intel</span>
+            <span class="tile-value" id="tileThreatIntel">—</span>
+          </div>
+        </div>
 
-    document.getElementById(id).classList.add("active");
+        <div class="features-section">
+          <button class="features-toggle" onclick="toggleFeatures()">
+            <i class="fa-solid fa-code"></i> Show Feature Analysis
+          </button>
+          <div class="features-grid" id="featuresGrid" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
 
-    /* FIX MAP RENDER */
-    if (id === "map") {
-        setTimeout(() => {
-            map.invalidateSize();
-        }, 200);
-    }
-}
+    <!-- Stats row -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card glass-card">
+        <div class="stat-icon phishing"><i class="fa-solid fa-fish-fins"></i></div>
+        <div class="stat-info">
+          <span class="stat-number" id="statPhishing">0</span>
+          <span class="stat-label">Phishing Detected</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-icon safe"><i class="fa-solid fa-shield-check"></i></div>
+        <div class="stat-info">
+          <span class="stat-number" id="statSafe">0</span>
+          <span class="stat-label">Safe URLs</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-icon total"><i class="fa-solid fa-chart-line"></i></div>
+        <div class="stat-info">
+          <span class="stat-number" id="statTotal">0</span>
+          <span class="stat-label">Total Scans</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card">
+        <div class="stat-icon avg"><i class="fa-solid fa-gauge-high"></i></div>
+        <div class="stat-info">
+          <span class="stat-number" id="statAvgRisk">0</span>
+          <span class="stat-label">Avg Risk Score</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <!-- ═════════════════════════════════════════════ MAP SECTION ══ -->
+  <section class="content-section" id="section-map">
+    <div class="section-header">
+      <h2><i class="fa-solid fa-earth-americas"></i> Global Attack Map</h2>
+      <p class="section-sub">Real-time threat origin visualization</p>
+    </div>
+    <div class="map-container glass-card">
+      <div id="attackMap"></div>
+      <div class="map-legend">
+        <div class="legend-item">
+          <span class="legend-dot defender"></span> Your Location
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot attacker"></span> Threat Origin
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot safe-origin"></span> Safe URL Origin
+        </div>
+      </div>
+      <div class="map-stats">
+        <span id="mapThreatCount">0 threats mapped</span>
+      </div>
+    </div>
+  </section>
 
-/* SCAN */
-async function scan() {
+  <!-- ════════════════════════════════════════════ LOGS SECTION ══ -->
+  <section class="content-section" id="section-logs">
+    <div class="section-header">
+      <h2><i class="fa-solid fa-terminal"></i> Threat Event Logs</h2>
+      <p class="section-sub">Live streaming security event feed</p>
+    </div>
+    <div class="logs-controls glass-card">
+      <div class="log-filters">
+        <button class="filter-btn active" data-severity="all" onclick="filterLogs('all', this)">All</button>
+        <button class="filter-btn critical" data-severity="critical" onclick="filterLogs('critical', this)">Critical</button>
+        <button class="filter-btn high" data-severity="high" onclick="filterLogs('high', this)">High</button>
+        <button class="filter-btn medium" data-severity="medium" onclick="filterLogs('medium', this)">Medium</button>
+        <button class="filter-btn low" data-severity="low" onclick="filterLogs('low', this)">Low</button>
+      </div>
+      <button class="clear-btn" onclick="clearLogs()">
+        <i class="fa-solid fa-trash"></i> Clear
+      </button>
+    </div>
+    <div class="logs-panel glass-card" id="logsPanel">
+      <div class="log-stream" id="logStream"></div>
+    </div>
+  </section>
 
-    const url = document.getElementById("urlInput").value;
+  <!-- ══════════════════════════════════════ ASSISTANT SECTION ══ -->
+  <section class="content-section" id="section-assistant">
+    <div class="section-header">
+      <h2><i class="fa-solid fa-robot"></i> CyberShield AI Assistant</h2>
+      <p class="section-sub">Intelligent threat analysis and cybersecurity guidance</p>
+    </div>
+    <div class="chat-container glass-card">
+      <div class="chat-messages" id="chatMessages">
+        <!-- Welcome message injected by JS -->
+      </div>
+      <div class="chat-suggestions" id="chatSuggestions">
+        <button onclick="sendSuggestion('What is phishing?')">What is phishing?</button>
+        <button onclick="sendSuggestion('Explain my last scan result')">Explain last scan</button>
+        <button onclick="sendSuggestion('How does the AI model work?')">How does AI work?</button>
+        <button onclick="sendSuggestion('Give me cybersecurity tips')">Safety tips</button>
+      </div>
+      <div class="chat-input-area">
+        <input
+          type="text"
+          id="chatInput"
+          class="chat-input"
+          placeholder="Ask about threats, phishing, risk scores..."
+          autocomplete="off"
+        />
+        <button class="chat-send-btn" onclick="sendChatMessage()" id="chatSendBtn">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </section>
 
-    await fetch("/scan", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({url})
-    });
-}
+</main>
 
+<!-- ══════════════════════════════════════════════════ TOOLTIP ══ -->
+<div class="tooltip-box" id="tooltipBox"></div>
 
-/* MAP UPDATE */
-function updateMap(geo) {
-
-    let user = [12.97, 77.59];
-    let attacker = [geo.lat || 0, geo.lon || 0];
-
-    L.marker(user).addTo(map).bindPopup("User");
-    L.marker(attacker).addTo(map).bindPopup("Attacker");
-
-    L.polyline([user, attacker]).addTo(map);
-}
-
-
-/* CHAT */
-async function sendChat() {
-
-    const input = document.getElementById("chatInput");
-    const msg = input.value;
-
-    const box = document.getElementById("chatBox");
-
-    box.innerHTML += "<div>You: " + msg + "</div>";
-
-    const res = await fetch("/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: msg})
-    });
-
-    const data = await res.json();
-
-    box.innerHTML += "<div>AI: " + data.reply + "</div>";
-}
+<!-- Scripts -->
+<script src="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
+<script src="[cdn.socket.io](https://cdn.socket.io/4.7.5/socket.io.min.js)"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
